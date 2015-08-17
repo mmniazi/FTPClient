@@ -1,6 +1,7 @@
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -13,17 +14,20 @@ import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.net.util.KeyManagerUtils;
 
 import java.io.*;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.ResourceBundle;
 
-public class Controller {
+public class Controller implements Initializable {
 
     private FTPClient ftpClient;
     private FTPSClient ftpsClient;
     private boolean isSecure;
     private Stage stage;
+    boolean loggedIn;
 
     @FXML
     private TextField userNameField;
@@ -65,7 +69,6 @@ public class Controller {
         }
 
         isSecure = secureCheckBox.isSelected();
-        boolean loggedIn = false;
         try {
             if (isSecure) {
                 ftpsClient = new FTPSClient(true);
@@ -112,9 +115,11 @@ public class Controller {
         try {
             if (isSecure) {
                 ftpsClient.logout();
+                loggedIn = false;
                 ftpsClient.disconnect();
             } else {
                 ftpClient.logout();
+                loggedIn = false;
                 ftpClient.disconnect();
             }
             progressTextArea.appendText("Logged Out.\n");
@@ -148,11 +153,16 @@ public class Controller {
 
     @FXML
     void receiveFile(ActionEvent event) {
+        if (!loggedIn) {
+            progressTextArea.appendText("Not logged in.\n");
+            return;
+        }
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 final String remoteFile = downloadFileField.getText();
-                final String localFile = downloadDirectoryField + File.separator + downloadFileField.getText();
+                final String localFile =
+                        downloadDirectoryField.getText() + File.separator + downloadFileField.getText();
                 File downloadedFile = new File(localFile);
                 try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(downloadedFile))) {
                     progressTextArea.appendText("Started downloading file.\n");
@@ -177,6 +187,7 @@ public class Controller {
                     });
                 } catch (IOException e) {
                     e.printStackTrace(System.err);
+                    progressTextArea.appendText("File not found.\n");
                 }
             }
         });
@@ -185,12 +196,16 @@ public class Controller {
 
     @FXML
     void sendFile(ActionEvent event) {
+        if (!loggedIn) {
+            progressTextArea.appendText("Not logged in.\n");
+            return;
+        }
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 String file = sendFileField.getText();
                 // Extracting file name from file path
-                String fileName = file.substring(file.lastIndexOf(File.separator + 1));
+                String fileName = file.replace("\\", "\\\\").substring(file.lastIndexOf(File.separator) + 4);
                 try (InputStream inputStream = new FileInputStream(file)) {
                     progressTextArea.appendText("Started uploading file.\n");
                     // Storing file on server
@@ -223,5 +238,11 @@ public class Controller {
 
     public void setStage(Stage stage) {
         this.stage = stage;
+    }
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        loggedIn = false;
+        downloadDirectoryField.setText(System.getProperty("user.home"));
     }
 }

@@ -11,7 +11,7 @@ public class Main extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("sample.fxml"));
         Parent root = loader.load();
         primaryStage.setTitle("FTP Client");
-        primaryStage.setScene(new Scene(root, 630, 470));
+        primaryStage.setScene(new Scene(root, 630, 500));
         primaryStage.setResizable(false);
         primaryStage.show();
         Controller controller = loader.getController();
